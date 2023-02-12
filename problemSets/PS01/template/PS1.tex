@@ -100,10 +100,53 @@ $$p(D \leq x) \frac{\sqrt {2\pi}}{x} \sum _{k=1}^{\infty }e^{-(2k-1)^{2}\pi ^{2}
 	D <- max(abs(empiricalCDF - pnorm(data))) \end{lstlisting}
 
 \vspace{3in}
+\begin{lstlisting}[language=R]
+set.seed(2023)
+data1 <- (rcauchy(1000, location=0, scale=1))
+ks_func <- function(data1){
+	ECDF <- ecdf(data1)
+	empiricalCDF <- ECDF(data1)
+	D <- max(abs(empiricalCDF-pnorm(data1)))
+	n <- length(data1)
+	p <- 2*exp(-D^2 * (2*n)/(1+n/n))
+	return(print(paste('p-value: ', p, 'D: ', D)))
+}
+
+ks.test(data1, 'pnorm')
+ks_func(data1)
+ \end{lstlisting}
 
 \section*{Question 2}
 \noindent Estimate an OLS regression in \texttt{R} that uses the Newton-Raphson algorithm (specifically \texttt{BFGS}, which is a quasi-Newton method), and show that you get the equivalent results to using \texttt{lm}. Use the code below to create your data.
 \vspace{.5cm}
 \lstinputlisting[language=R, firstline=51,lastline=53]{PS1.R} 
+\begin{lstlisting}[language=R]
+set.seed (123)
+data2 <- data.frame(x = runif(200, 1, 10))
+data2$y <- 0 + 2.75*data2$x + rnorm(200, 0, 1.5)
+
+olsreg <- lm(y~x, data=data2)
+summary(olsreg)
+
+lin_lik <- function(theta, y, x){
+	n <- nrow(x)
+	k<- ncol(x)
+	beta <- theta[1:k]
+	sigma2 <- theta[k+1]^2
+	e <- y-x%*%beta
+	logl <- -.5*n*log(2*pi)-.5*n*log(sigma2)-((t(e))%*%e)/(2*sigma2)
+	return(-logl)
+}
+
+
+mle <- optim(fn=lin_lik,
+par= c(1,1,1),
+hessian =TRUE,
+y= data2$y, 
+X= cbind(1, data2$x),
+method='BFGS')
+
+mle$par
+ \end{lstlisting}
 
 \end{document}
