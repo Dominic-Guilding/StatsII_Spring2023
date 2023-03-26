@@ -16,12 +16,40 @@ A Report compiled for the Alliance of Wealthy People who Dislike Tax, investigat
 \section{Findings}
 A multivariate regression of the variables resulted in the following findings:
 
-% paste your stargazer code here
 
-The relationship can be visualised in a scatter plot.
+\begin{table}[!htbp] \centering 
+	\caption{} 
+	\label{} 
+	\begin{tabular}{@{\extracolsep{5pt}}lc} 
+		\\[-1.8ex]\hline 
+		\hline \\[-1.8ex] 
+		& \multicolumn{1}{c}{\textit{Dependent variable:}} \\ 
+		\cline{2-2} 
+		\\[-1.8ex] & GDP \\ 
+		\hline \\[-1.8ex] 
+		tax\_revenue & $-$17,841,582,114.000 \\ 
+		& (24,488,995,797.000) \\ 
+		& \\ 
+		EOB & $-$10,362,705,535.000$^{*}$ \\ 
+		& (5,421,547,047.000) \\ 
+		& \\ 
+		Constant & 1,271,212,621,915.000$^{**}$ \\ 
+		& (572,773,666,962.000) \\ 
+		& \\ 
+		\hline \\[-1.8ex] 
+		Observations & 46 \\ 
+		R$^{2}$ & 0.083 \\ 
+		Adjusted R$^{2}$ & 0.040 \\ 
+		Residual Std. Error & 828,914,815,252.000 (df = 43) \\ 
+		F Statistic & 1.938 (df = 2; 43) \\ 
+		\hline 
+		\hline \\[-1.8ex] 
+		\textit{Note:}  & \multicolumn{1}{r}{$^{*}$p$<$0.1; $^{**}$p$<$0.05; $^{***}$p$<$0.01} \\ 
+	\end{tabular} 
+\end{table} 
+
+
 %edit this code with the name of the pdf of your plot. This must be in the same directory as this .tex file
-\begin{figure}[b!]\centering
-	\includegraphics[width=.7\textwidth]{your plot.pdf}\\
-\end{figure}
+
 
 \end{document}          

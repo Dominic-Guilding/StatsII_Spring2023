@@ -102,6 +102,43 @@
 	\item Construct and interpret an unordered multinomial logit with \texttt{GDPWdiff} as the output and "no change" as the reference category, including the estimated cutoff points and coefficients.
 	\item Construct and interpret an ordered multinomial logit with \texttt{GDPWdiff} as the outcome variable, including the estimated cutoff points and coefficients.
 	
+
+	\begin{lstlisting}[language=R] 
+	#create factors
+	data_gdp$OIL <- factor(data_gdp$OIL,
+	levels = c(0,1),
+	labels = c("Exports < 50%", "Exports > 50%"))
+	tail(data_gdp$OIL)
+	
+	data_gdp$GDPWdiff_cat <- cut(data_gdp$GDPWdiff, breaks = c(-Inf, -1, 1,Inf),
+	labels = c("Negative", "No Change", "Positive"))
+	
+	levels(data_gdp$GDPWdiff_cat)
+	
+	#relevel
+	data_gdp$GDPWdiff_cat <- relevel(data_gdp$GDPWdiff_cat, ref = "No Change")
+	
+	#(a)
+	multi_model <- multinom(GDPWdiff_cat ~ REG + OIL, data = data_gdp)
+	summary(multi_model) \end{lstlisting}
+	
+	Interpretation:
+	A one unit increase in oil exports (oil exports > 50 percent GDP) is associated with 
+	an increase of 0.57 in the log odds of negative GDP growth vs no change in a 
+	given country-year. A one unit increase in oil exports is associated with an increase 
+	of 0.36 in the log odds of positive growth vs no change in a given country-year
+	The quality of being a democracy (REG = 1) is associated with a 1.01 increase 
+	in the log odds of negative growth vs no change in a given country-year.
+	The quality of being a democracy (REG = 1) is associated with a 1.4 increase in 
+	the log odds of positive growth vs no change in a given country-year.
+	\begin{lstlisting}[language=R] 
+	ord_multi_model <- polr(GDPWdiff_cat ~ REG + OIL, data = data_gdp, Hess = TRUE) 
+	summary(ord_multi_model)
+	exp(coef(ord_multi_model))\end{lstlisting}
+	Interpretation: The quality of being a democracy is associated with an increase of 1.5 in the 
+	odds of GDP increasing or decreasing in a given year.
+	A one unit increase in oil export (exports > 50 percent GDP) is associated with 0.82 increase
+	in the odds of a country's GDP increasing or decreasing in a given year.
 	
 \end{enumerate}
 
@@ -113,13 +150,39 @@
 \begin{enumerate}
 	\item [(a)]
 	Run a Poisson regression because the outcome is a count variable. Is there evidence that PAN presidential candidates visit swing districts more? Provide a test statistic and p-value.
+\begin{lstlisting}[language=R] 
+pan_poisson <- glm(PAN.visits.06 ~ competitive.district + marginality.06 + 
+PAN.governor.06, data=data_mex, family = poisson)
+summary(pan_poisson)
+errors <- summary(pan_poisson)$coefficients[, 2]
+cfs <- coef(pan_poisson)
+pan_poisson_z <- cfs/errors
+p <- (1 - pnorm(abs(pan_poisson_z), 0, 1))*2
+p
+\end{lstlisting}
+No, there is no evidence that PAN candidates visit swing districts more. The estimate 
+for swing districts 0.921 visits on average, but this result is not 
+statistically different from 0.
 
 	\item [(b)]
 	Interpret the \texttt{marginality.06} and \texttt{PAN.governor.06} coefficients.
+Marginality.06 : On average, a one-unit increase in the measure of poverty is 
+associated with a -2.08 decrease in the log odds of Calderon visiting to the 
+district in the run up to the 2009 elections, holding all other variables constant
+
+PAN.governor.06 : On average, the effect of a given district having a sitting 
+PAN governor is associated with a -0.31 decrease in the log odds of Calderon 
+visiting the district in the run up to the 2009 elections, holding all other 
+variables constant. Although these effects are not statistically different from 0.
 	
 	\item [(c)]
 	Provide the estimated mean number of visits from the winning PAN presidential candidate for a hypothetical district that was competitive (\texttt{competitive.district}=1), had an average poverty level (\texttt{marginality.06} = 0), and a PAN governor (\texttt{PAN.governor.06}=1).
-	
+\begin{lstlisting}[language=R] 
+cfs <- coef(pan_poisson)
+exp(cfs[1]*1 + cfs[2]*0 + cfs[3]*1)*100
+\end{lstlisting}	
+Estimated that Calderon would visit this hypothetical district 0.276 times in 
+the run up to the 2009 election.
 \end{enumerate}
 
 \end{document}
