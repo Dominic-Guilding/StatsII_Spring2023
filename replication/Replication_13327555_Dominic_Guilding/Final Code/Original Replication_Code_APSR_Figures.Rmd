@@ -1,0 +1,262 @@
+---
+title: "Replication Code for APSR Article: Symbolic Refugee Protection: Explaining Latin America's Liberal Refugee Laws"
+author: "Omar Hammoud Gallego^[Fellow in Political Science and Public Policy, School of Public Policy, The London School of Economics and Political Science, o.hammoud-gallego@lse.ac.uk, orcid-id: 0000-0001-9723-1451] and Luisa Feline Freier^[Associate Professor of Social and Political Sciences, Universidad del Pacifico (Lima, Peru), lf.freierd@up.edu.pe, orcid-id: 0000-0002-4653-4812]."
+date: "04/06/2022"
+abstract: ""
+header-includes:
+   - \usepackage{dcolumn}
+   - \usepackage{setspace}\doublespacing
+   - \setlength\parindent{24pt}
+output:
+  pdf_document:
+    latex_engine: xelatex
+    dev: "cairo_pdf"
+    fig_caption: yes
+   # toc: yes
+   # toc_depth: '3'
+  html_document:
+    theme: journal
+    toc: yes
+    toc_float:
+      collapsed: yes
+    toc_depth: 3
+    number_sections: yes
+    fig_caption: yes
+    df_print: paged
+font-family: Times New Roman
+fontsize: 12pt
+bibliography: PhD_Paper_2_Bibliography.bib
+csl: american-journal-of-political-science.csl
+---
+
+
+<style>
+body {
+text-align: justify}
+</style>
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+	echo = FALSE,
+	message = FALSE,
+	warning = FALSE
+)
+```
+
+```{r, package and data upload}
+
+# Set Working Directory
+setwd("C:/Users/omarh/Documents/GitHub/PhD_Paper_2/data-raw")
+
+# SET YOUR OWN DIRECTORY
+# setwd()
+
+# upload packages
+library(ggplot2)
+library(dplyr)
+library("vistime")        # package for timeline visualisation
+
+
+# Upload UNHCR Data
+#devtools::install_github("unhcr/unhcrdatapackage")
+library(unhcrdatapackage)
+
+# Upload Data
+APLA_Data<- read.csv("Data_APLA.csv", stringsAsFactors = TRUE)         # Data APLA  
+```
+
+
+```{r, Filter Argentina Mexico and Plot  FIGURE 1 AND 2}
+
+Filtered_APLA_Data<- APLA_Data %>%
+    filter(Country %in% c("Argentina", "Mexico"))
+
+# Convert Year to date format
+Filtered_APLA_Data$Year<- lubridate::ymd(Filtered_APLA_Data$Year, truncated = 2L)
+
+# Only argentina
+Argentina<- Filtered_APLA_Data %>%
+    filter(Country == "Argentina")
+
+# only mexico
+Mexico<- Filtered_APLA_Data %>%
+    filter(Country == "Mexico")
+
+# Plot Only Data Argentina AND Mexico
+#p1<- ggplot(Filtered_APLA_Data, aes(Year, Regulatory_Complexity, col= Country))+
+ # geom_line()+
+#  facet_wrap(.~ Country)+
+#  theme(legend.position = "none")+  # to remove legend
+#  ggtitle("Regulatory Complexity in Asylum Policies of Argentina and Mexico, 1990-2018") +
+#  ylab("Regulatory Complexity")+
+#  theme_bw()+
+#  theme(legend.position="none")
+
+# CUTS FOR ARGENTINA ONLY 
+cuts <- data.frame(Ref = c("Refugee Convention", "Convention Against Torture", "Protocol Convention Against Torture", "International Covenant Civil and Political Rights", "Optional Protocol to Int. Covenant","Convention Rights Child", "Protocol Convention Rights Child"), vals = c("06/12/1967", "24/09/1985", "15/11/2004", "08/01/1984", "08/03/1987","04/12/1990", "10/09/2002"),stringsAsFactors = FALSE)
+
+cuts$vals<- as.Date(cuts$vals, format= "%d/%m/%Y")
+
+#PLOT ONLY ARGENTINA
+Argentina_plot<- ggplot(Argentina, aes(Year, Regulatory_Complexity))+
+  geom_line(colour = "Blue")+
+  geom_vline(mapping = aes(xintercept = vals, colour = Ref), data= cuts, show.legend = FALSE, linetype= "dashed")+
+  geom_text(mapping = aes(x = vals,
+                          y = 40,
+                          label = Ref),
+            data = cuts, angle= 45)+
+  xlim(as.Date(c("01/01/1964", "10/10/2019"),format="%d/%m/%Y"))+
+  ggtitle("Regulatory Complexity and Ratification of International Treaties of Argentina") +
+  ylab("Regulatory Complexity")+
+  theme_bw()+
+  theme(legend.position="none")
+
+
+
+
+
+
+# CUTS FOR MEXICO ONLY 
+cuts <- data.frame(Ref = c("Refugee Convention", "Convention Against Torture", "Protocol Convention Against Torture",  "International Covenant Civil and Political Rights", "Optional Protocol to Int. Covenant","Convention Rights Child", "Protocol Convention Rights Child"), vals = c("07/06/2000", "23/01/1986", "11/04/2005", "23/03/1981", "15/01/2002","21/09/1990", "15/12/2003"),stringsAsFactors = FALSE)
+
+cuts$vals<- as.Date(cuts$vals, format= "%d/%m/%Y")
+
+#PLOT ONLY MEXICO
+Mexico_plot<- ggplot(Mexico, aes(Year, Regulatory_Complexity))+
+  geom_line(colour = "Red")+
+  geom_vline(mapping = aes(xintercept = vals, colour = Ref), data= cuts, show.legend = FALSE, linetype= "dashed")+
+  geom_text(mapping = aes(x = vals,
+                          y = 40,
+                          label = Ref),
+            data = cuts, angle= 45)+
+  xlim(as.Date(c("01/01/1975", "10/10/2019"),format="%d/%m/%Y"))+
+  ggtitle("Regulatory Complexity and Ratification of International Treaties of Mexico") +
+  ylab("Regulatory Complexity")+
+  theme_bw()+
+  theme(legend.position="none")
+
+
+
+Argentina_plot
+
+Mexico_plot
+```
+
+
+```{r, plot refugee and asylum numbers overall in LA FIGURE 3}
+
+# Get necessary unhcr data
+get(data("asylum_applications"))
+get(data("end_year_population_totals"))
+get(data("reference"))
+#Solutions<- get(data("solutions"))
+
+# as_tibble
+asylum_applications<- as_tibble(asylum_applications)
+end_year_population_totals<- as_tibble(end_year_population_totals)
+reference<- as_tibble(reference)
+
+# Select only interested columns
+Data_Application<- asylum_applications %>%
+    dplyr::select(Year, CountryAsylumName, NumberApplications)
+Data_Application1<- end_year_population_totals %>%
+    dplyr::select(Year, CountryAsylumName, REF)
+Data_Application2<- reference %>%
+    dplyr::select(ctryname, REGION_WB)
+
+# if more memory space needed
+#remove(APLA_Data)
+
+# Merge UNHCR Datasets
+Refuge_UNHCR<- full_join(Data_Application, Data_Application1, by= c("CountryAsylumName", "Year"))
+Refuge_UNHCR<- full_join(Refuge_UNHCR, Data_Application2, by= c("CountryAsylumName"="ctryname"))
+
+# Rename columns
+Refuge_UNHCR<- Refuge_UNHCR %>%
+  rename("Country"= CountryAsylumName, "Asylum-Seekers" = NumberApplications, "Refugees"= REF)
+
+# Filter to PLOT Number Refugees and Asylum Seekers in LA
+Refuge_UNHCR_LA <- Refuge_UNHCR %>%
+    filter(REGION_WB == "Latin America & Caribbean")
+
+# Long Format
+Refuge_LA_Long<- tidyr::gather(Refuge_UNHCR_LA, Refugees_AS, Numbers , "Asylum-Seekers":"Refugees", factor_key=TRUE)
+
+# Change into Date and Numeric for plotting
+#Refuge_LA_Long$Year<- as.Date(as.character(Refuge_LA_Long$Year), format = "%Y")
+#Refuge_LA_Long$Numbers<- as.numeric(as.character(Refuge_LA_Long$Numbers))
+#Refuge_LA_Long$Refugees_AS<- as.factor(Refuge_LA_Long$Refugees_AS)
+
+# Extract Unique Rows
+Refuge_LA<- unique(Refuge_LA_Long)
+library(tidyr)
+Refuge_LA<- Refuge_LA %>% dplyr::select(Year, Refugees_AS, Numbers) %>% drop_na()
+
+Refuge_LA$Numbers<- as.numeric(as.character(Refuge_LA$Numbers))
+Refuge_LA$Year<- as.Date(as.character(Refuge_LA$Year), format = "%Y")
+Refuge_LA$Refugees_AS<- as.factor(Refuge_LA$Refugees_AS)
+
+Refuge_LA1<- Refuge_LA %>% 
+  dplyr:: group_by(Year, Refugees_AS) %>%
+  summarise(Frequency = sum(Numbers)) 
+
+# PLOT Number Refugees and Asylum Seekers in LA
+FIGURE_REFUGEES<- ggplot(Refuge_LA1, aes(x= Year, y = Frequency, linetype = Refugees_AS)) +
+    geom_line() +
+    scale_x_date(breaks = "10 year", date_labels = "%Y")+
+    scale_y_continuous(breaks = seq(0,1200000, 250000), label = c("0", "250k", "500k", "750k", "1 Million"))+
+    scale_linetype_manual(values=c("solid", "dotted"))+
+    theme_classic()+
+    theme(legend.title = element_blank())+
+    labs(x= element_blank(), y = element_blank(), title= "Refugees and Asylum Seekers in Latin America, 1970-2020")
+
+
+FIGURE_REFUGEES
+
+# To calculate total number refugees in Argentina in 2005
+#end_year_population_totals %>%
+#    filter(CountryAsylumName == "Argentina", Year == 2005) %>%
+#    mutate(total = sum(REF))
+
+```
+
+
+```{r, Refugees in Selected Countries FIGURE 4}
+
+# Extract Unique Rows
+Refuge_LA<- unique(Refuge_LA_Long)
+
+Refuge_LA<- Refuge_LA %>% dplyr::select(Year, Refugees_AS, Country, Numbers) %>% drop_na()
+
+Refuge_LA$Numbers<- as.numeric(as.character(Refuge_LA$Numbers))
+#Refuge_LA$Year<- as.Date(as.character(Refuge_LA$Year), format = "%Y")
+Refuge_LA$Refugees_AS<- as.factor(Refuge_LA$Refugees_AS)
+
+Refuge_LA2<- Refuge_LA %>% 
+  dplyr:: select(Year, Country, Refugees_AS, Numbers) %>%
+  dplyr:: filter(Country %in% c("Argentina", "Mexico")) %>%
+  dplyr:: group_by(Year, Refugees_AS, Country) %>%
+  summarise(Frequency = sum(Numbers)) %>%
+  dplyr:: filter(Refugees_AS == "Refugees")
+
+Refuge_LA2$Year<- as.integer(as.character(Refuge_LA2$Year))
+Refuge_LA2$Country<- as.factor(as.character(Refuge_LA2$Country))
+
+cuts <- data.frame(Ref = c("Argentina's \n Asylum Law", "Mexico's \n Asylum Law"), vals = c(2006, 2011),stringsAsFactors = FALSE)
+
+
+REF_MEX_ARG<- ggplot(Refuge_LA2, aes(x= Year, y = Frequency)) +
+    geom_line( aes(linetype = Country)) +
+    geom_vline(mapping = aes(xintercept = vals, shape= Ref), data = cuts, show.legend= FALSE)+
+  geom_text(mapping = aes(x = vals,
+                          y = 100000,
+                          label = Ref),
+            data = cuts, angle= 45)+
+      scale_y_continuous(breaks = seq(0,300000, 100000), label = c("0", "100k", "200k", "350k"))+
+    theme_classic()+
+    theme(legend.title = element_blank())+
+    labs(x= element_blank(), y = element_blank(), title= "Refugees in Argentina and Mexico, 1970-2020")
+
+REF_MEX_ARG
+```
+

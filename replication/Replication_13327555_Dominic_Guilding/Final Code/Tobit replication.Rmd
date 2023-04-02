@@ -1,0 +1,99 @@
+---
+title: "Replication"
+author: "Dominic Guilding"
+date: "2023-03-27"
+output:
+  html_document: default
+  pdf_document: default
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+```{r}
+library("AER")
+library("sandwich") # for clustered standard errors
+library("lmtest")
+library("plm") # to specify the panel structure of the data frame
+
+# To Create Lag Variables
+library("DataCombine")
+# To standardize the coefficients of regression models
+library("reghelper")
+# To Print table for Paper and Presentations
+library(sjPlot)
+library(sjmisc)
+library(sjlabelled)
+library(tbm)
+library(ggeffects)
+library(gridExtra)
+library(stargazer)
+
+# For Moran I Test
+library(ape)
+library(spdep)
+library(mefa) # to transform matrix into listw object
+```
+
+# Upload Data
+```{r}
+APLA_Data<- read.csv("Data_APLA.csv", stringsAsFactors = TRUE)
+
+#run tobit models
+APLA_Data$Year<- as.factor(APLA_Data$Year) # Year as factor
+
+APLA_Data<- plm.data(APLA_Data, index = c("Country", "Year")) # to Specify the panel data structure
+```
+models
+```{r}
+TOB1<- tobit(Regulatory_Complexity ~ VDEM_Polyarchy+ Left1_Other0 + Country + Year , data= APLA_Data)
+
+TOB2<- tobit(Regulatory_Complexity ~ GrowthGDPperCap + Trade_Perc_GDP + Country + Year  , data= APLA_Data)
+
+TOB3<- tobit(Regulatory_Complexity ~ IntMigStock+ Country + Year  , data= APLA_Data)
+
+TOB4<- tobit(Regulatory_Complexity ~ RefAsPerc+ Country + Year ,data= APLA_Data)
+
+TOB5<- tobit(Regulatory_Complexity ~ VDEM_Polyarchy + Left1_Other0 +GrowthGDPperCap+ Trade_Perc_GDP+ IntMigStock+ RefAsPerc + MigSpainUSPerc + Country + Year , data= APLA_Data)
+```
+
+
+# Calculate Clustered Standard Errors
+```{r}
+TOB1coeffs_cl <- coeftest(TOB1, vcov = vcovCL, cluster = ~Country)
+TOB2coeffs_cl <- coeftest(TOB2, vcov = vcovCL, cluster = ~Country)
+TOB3coeffs_cl <- coeftest(TOB3, vcov = vcovCL, cluster = ~Country)
+TOB4coeffs_cl <- coeftest(TOB4, vcov = vcovCL, cluster = ~Country)
+TOB5coeffs_cl <- coeftest(TOB5, vcov = vcovCL, cluster = ~Country)
+# Select Clustered Standard Errors
+TOB1coeffs_cl<- TOB1coeffs_cl[,2]
+TOB2coeffs_cl<- TOB2coeffs_cl[,2]
+TOB3coeffs_cl<- TOB3coeffs_cl[,2]
+TOB4coeffs_cl<- TOB4coeffs_cl[,2]
+TOB5coeffs_cl<- TOB5coeffs_cl[,2]
+```
+
+```{r}
+#multicollinearity check (VIF)
+vif_score <- vif(TOB5)
+vif_score
+```
+
+```{r}
+stargazer(TOB1, TOB2,TOB3, TOB4, TOB5,
+          type = "text",  
+          covariate.labels = c("VDEM Polyarchy", "Left-Wing Gov", "Change in GDP per capita", 
+                               "Trade as perc. of GDP", "International Migration Stock",
+                               "Refugees as perc. of pop.", "Emigrants in US and Spain"), 
+          dep.var.labels = "Regulatory Complexity", 
+          omit = c("Constant", "Country", "Year"), 
+          digits = 2, title = "Tobit Model on Regulatory Complexity", align= TRUE, 
+          add.lines = list( c("Country FE", "Yes", "Yes", "Yes", "Yes","Yes"),
+                            c("Year FE", "Yes", "Yes", "Yes", "Yes","Yes"),
+                            c("Country-Level\nClustered SE",  "Yes", "Yes", "Yes", "Yes", "Yes")),
+          column.sep.width = "3pt", omit.stat = "wald", 
+          se = list (TOB1coeffs_cl, 
+                     TOB2coeffs_cl,
+                     TOB3coeffs_cl, TOB4coeffs_cl,  TOB5coeffs_cl), 
+          notes = "These models use left-censoring at zero", out = "table.html")
+```

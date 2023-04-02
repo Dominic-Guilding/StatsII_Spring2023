@@ -1,0 +1,188 @@
+---
+title: "Replication Code for APSR Article: Symbolic Refugee Protection: Explaining Latin America's Liberal Refugee Laws"
+author: "Omar Hammoud Gallego^[Fellow in Political Science and Public Policy, School of Public Policy, The London School of Economics and Political Science, o.hammoud-gallego@lse.ac.uk, orcid-id: 0000-0001-9723-1451] and Luisa Feline Freier^[Associate Professor of Social and Political Sciences, Universidad del Pacifico (Lima, Peru), lf.freierd@up.edu.pe, orcid-id: 0000-0002-4653-4812]."
+date: "19/05/2022"
+abstract: ""
+header-includes:
+   - \usepackage{dcolumn}
+   - \usepackage{setspace}\doublespacing
+   - \setlength\parindent{24pt}
+output:
+  pdf_document:
+    latex_engine: xelatex
+    dev: "cairo_pdf"
+    fig_caption: yes
+   # toc: yes
+   # toc_depth: '3'
+  html_document:
+    theme: journal
+    toc: yes
+    toc_float:
+      collapsed: yes
+    toc_depth: 3
+    number_sections: yes
+    fig_caption: yes
+    df_print: paged
+font-family: Times New Roman
+fontsize: 12pt
+bibliography: PhD_Paper_2_Bibliography.bib
+csl: american-journal-of-political-science.csl
+---
+
+
+<style>
+body {
+text-align: justify}
+</style>
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+	echo = FALSE,
+	message = FALSE,
+	warning = FALSE
+)
+```
+
+```{r, package and data upload}
+
+
+
+
+
+# Upload Data
+APLA_Data<- read.csv("Data_APLA.csv", stringsAsFactors = TRUE)         # Data APLA  
+
+# To run Tobit model 
+#install.packages("AER")
+library("AER")
+library("sandwich") # for clustered standard errors
+library("lmtest")
+library("plm") # to specify the panel structure of the data frame
+
+# To Create Lag Variables
+library("DataCombine")
+# To standardize the coefficients of regression models
+library("reghelper")
+# To Print table for Paper and Presentations
+library(sjPlot)
+library(sjmisc)
+library(sjlabelled)
+library(tbm)
+library(ggeffects)
+library(gridExtra)
+library(stargazer)
+
+# For Moran I Test
+library(ape)
+library(spdep)
+library(mefa) # to transform matrix into listw object
+
+```
+
+Warning: run each Tobit model once per session. 
+
+
+```{r, Tobit model, warning=FALSE, results= "asis", message=FALSE}
+
+APLA_Data$Year<- as.factor(APLA_Data$Year) # Year as factor
+
+APLA_Data<- plm.data(APLA_Data, index = c("Country", "Year")) # to Specify the panel data structure
+
+
+TOB1<- tobit(Regulatory_Complexity ~ VDEM_Polyarchy+ Left1_Other0 + Country + Year , data= APLA_Data)
+
+TOB2<- tobit(Regulatory_Complexity ~ GrowthGDPperCap + Trade_Perc_GDP + Country + Year  , data= APLA_Data)
+
+TOB3<- tobit(Regulatory_Complexity ~ IntMigStock+ Country + Year  , data= APLA_Data)
+
+TOB4<- tobit(Regulatory_Complexity ~ RefAsPerc+ Country + Year ,data= APLA_Data)
+
+TOB5<- tobit(Regulatory_Complexity ~ VDEM_Polyarchy + Left1_Other0 +GrowthGDPperCap+ Trade_Perc_GDP+ IntMigStock+ RefAsPerc + MigSpainUSPerc + Country + Year , data= APLA_Data)
+
+
+
+# Calculate Clustered Standard Errors
+TOB1coeffs_cl <- coeftest(TOB1, vcov = vcovCL, cluster = ~Country)
+TOB2coeffs_cl <- coeftest(TOB2, vcov = vcovCL, cluster = ~Country)
+TOB3coeffs_cl <- coeftest(TOB3, vcov = vcovCL, cluster = ~Country)
+TOB4coeffs_cl <- coeftest(TOB4, vcov = vcovCL, cluster = ~Country)
+TOB5coeffs_cl <- coeftest(TOB5, vcov = vcovCL, cluster = ~Country)
+# Select Clustered Standard Errors
+TOB1coeffs_cl<- TOB1coeffs_cl[,2]
+TOB2coeffs_cl<- TOB2coeffs_cl[,2]
+TOB3coeffs_cl<- TOB3coeffs_cl[,2]
+TOB4coeffs_cl<- TOB4coeffs_cl[,2]
+TOB5coeffs_cl<- TOB5coeffs_cl[,2]
+
+
+stargazer(TOB1, TOB2,TOB3, TOB4, TOB5,
+          type = "latex",  
+          covariate.labels = c("VDEM Polyarchy", "Left-Wing Gov", "Change in GDP per capita", 
+                               "Trade as perc. of GDP", "International Migration Stock",
+                               "Refugees as perc. of pop.", "Emigrants in US and Spain"), 
+          dep.var.labels = "Regulatory Complexity", 
+          omit = c("Constant", "Country", "Year"), 
+          digits = 2, title = "Tobit Model on Regulatory Complexity", align= TRUE, 
+                    add.lines = list( c("Country FE", "Yes", "Yes", "Yes", "Yes","Yes"),
+                            c("Year FE", "Yes", "Yes", "Yes", "Yes","Yes"),
+                            c("Country-Level\nClustered SE",  "Yes", "Yes", "Yes", "Yes", "Yes")),
+          column.sep.width = "3pt", 
+        omit.stat = "wald", 
+          se = list (TOB1coeffs_cl, 
+                    TOB2coeffs_cl,
+                    TOB3coeffs_cl, TOB4coeffs_cl,  TOB5coeffs_cl), 
+          notes = "These models use left-censoring at zero")
+
+```
+
+```{r, Tobit model lag 1 and 3, warning=FALSE, message=FALSE, results= "asis"}
+
+# Lag Regulatory Complexity by 1 and 3 years 
+APLA_Data<- slide(data=APLA_Data, Var= "Regulatory_Complexity", GroupVar= "Country", NewVar= "One_Year_Lag_Regulatory_Complexity", slideBy= -1)
+APLA_Data<- slide(data=APLA_Data, Var= "Regulatory_Complexity", GroupVar= "Country", NewVar= "Three_Year_Lag_Regulatory_Complexity", slideBy= -3)
+
+require(stargazer)
+require(AER)
+
+# For some reason, AER:: required before tobit for it to work with Stargazer
+
+LAGFEGLM1<- tobit(One_Year_Lag_Regulatory_Complexity ~ VDEM_Polyarchy + Left1_Other0 + Trade_Perc_GDP + Country + Year, data= APLA_Data)
+
+LAGFEGLM2<- tobit(One_Year_Lag_Regulatory_Complexity ~ VDEM_Polyarchy + Left1_Other0 +GrowthGDPperCap+ Trade_Perc_GDP+ IntMigStock+ RefAsPerc + MigSpainUSPerc + Country + Year, data= APLA_Data)
+
+LAGFEGLM3<- tobit(Three_Year_Lag_Regulatory_Complexity ~ VDEM_Polyarchy + Left1_Other0 + Trade_Perc_GDP + Country + Year, data= APLA_Data)
+
+LAGFEGLM4<- tobit(Three_Year_Lag_Regulatory_Complexity ~ VDEM_Polyarchy + Left1_Other0 +GrowthGDPperCap+ Trade_Perc_GDP+ IntMigStock+ RefAsPerc + MigSpainUSPerc + Country + Year, data= APLA_Data)
+
+
+# Calculate Clustered Standard Errors
+LAGFEGLM1_cse <- coeftest(LAGFEGLM1, vcov = vcovCL, cluster = ~Country)
+LAGFEGLM2_cse <- coeftest(LAGFEGLM2, vcov = vcovCL, cluster = ~Country)
+LAGFEGLM3_cse <- coeftest(LAGFEGLM3, vcov = vcovCL, cluster = ~Country)
+LAGFEGLM4_cse <- coeftest(LAGFEGLM4, vcov = vcovCL, cluster = ~Country)
+
+# Select Clustered Standard Errors
+LAGFEGLM1_cse<- LAGFEGLM1_cse[,2]
+LAGFEGLM2_cse<- LAGFEGLM2_cse[,2]
+LAGFEGLM3_cse<- LAGFEGLM3_cse[,2]
+LAGFEGLM4_cse<- LAGFEGLM4_cse[,2]
+
+
+
+stargazer(LAGFEGLM1, LAGFEGLM2,LAGFEGLM3, LAGFEGLM4,
+          type = "latex",  
+          covariate.labels = c("VDEM Polyarchy", "Left-Wing Gov", "Change in GDP per capita", 
+                               "Trade as perc. of GDP", "International Migration Stock",
+                               "Refugees as perc. of pop.", "Emigrants in US and Spain"), 
+          dep.var.labels = "Regulatory Complexity Lagged", 
+          omit = c("Constant", "Country", "Year"), 
+          digits = 2, title = "Tobit Model on Regulatory Complexity", align= TRUE, 
+          column.sep.width = "5pt", 
+          omit.stat = "wald", 
+          se = list (LAGFEGLM1_cse, 
+                    LAGFEGLM2_cse,
+                    LAGFEGLM3_cse, LAGFEGLM4_cse), 
+          notes = "These models use left-censoring at zero with clustered standard errors at the country level")
+
+```
+

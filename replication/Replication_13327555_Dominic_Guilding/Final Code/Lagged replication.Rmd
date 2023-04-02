@@ -1,0 +1,95 @@
+---
+title: "Lag markdown"
+author: "Dominic Guilding"
+date: "2023-03-30"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+```{r}
+library("AER")
+library("sandwich") # for clustered standard errors
+library("lmtest")
+library("plm") # to specify the panel structure of the data frame
+
+# To Create Lag Variables
+library("DataCombine")
+# To standardize the coefficients of regression models
+library("reghelper")
+# To Print table for Paper and Presentations
+library(sjPlot)
+library(sjmisc)
+library(sjlabelled)
+library(tbm)
+library(ggeffects)
+library(gridExtra)
+library(stargazer)
+
+# For Moran I Test
+library(ape)
+library(spdep)
+library(mefa)
+```
+
+```{r}
+Data_APLA <- read.csv("Data_APLA.csv", stringsAsFactors = TRUE)
+
+# Lag Regulatory Complexity by 1 and 3 years 
+APLA_Data_1 <- slide(data=Data_APLA, Var= "Regulatory_Complexity", GroupVar= "Country", NewVar= "One_Year_Lag_Regulatory_Complexity", slideBy= -1)
+
+APLA_Data_3 <- slide(data=Data_APLA, Var= "Regulatory_Complexity", GroupVar= "Country", NewVar= "Three_Year_Lag_Regulatory_Complexity", slideBy= -3)
+
+require(stargazer)
+require(AER)
+
+# For some reason, AER:: required before tobit for it to work with Stargazer
+
+LAGFEGLM1<- tobit(One_Year_Lag_Regulatory_Complexity ~ VDEM_Polyarchy + 
+                    Left1_Other0 + Trade_Perc_GDP + Country + Year, data= APLA_Data_1)
+
+LAGFEGLM2<- tobit(One_Year_Lag_Regulatory_Complexity ~ VDEM_Polyarchy + 
+                    Left1_Other0 +GrowthGDPperCap+ Trade_Perc_GDP+ IntMigStock+ 
+                    RefAsPerc + MigSpainUSPerc + Country + Year, data= APLA_Data_1)
+
+LAGFEGLM3<- tobit(Three_Year_Lag_Regulatory_Complexity ~ VDEM_Polyarchy + 
+                    Left1_Other0 + Trade_Perc_GDP + Country + Year, data= APLA_Data_3)
+
+LAGFEGLM4<- tobit(Three_Year_Lag_Regulatory_Complexity ~ VDEM_Polyarchy + 
+                    Left1_Other0 +GrowthGDPperCap+ Trade_Perc_GDP+ IntMigStock+ 
+                    RefAsPerc + MigSpainUSPerc + Country + Year, data= APLA_Data_3)
+
+
+# Calculate Clustered Standard Errors
+LAGFEGLM1_cse <- coeftest(LAGFEGLM1, vcov = vcovCL, cluster = ~Country)
+LAGFEGLM2_cse <- coeftest(LAGFEGLM2, vcov = vcovCL, cluster = ~Country)
+LAGFEGLM3_cse <- coeftest(LAGFEGLM3, vcov = vcovCL, cluster = ~Country)
+LAGFEGLM4_cse <- coeftest(LAGFEGLM4, vcov = vcovCL, cluster = ~Country)
+
+# Select Clustered Standard Errors
+LAGFEGLM1_cse<- LAGFEGLM1_cse[,2]
+LAGFEGLM2_cse<- LAGFEGLM2_cse[,2]
+LAGFEGLM3_cse<- LAGFEGLM3_cse[,2]
+LAGFEGLM4_cse<- LAGFEGLM4_cse[,2]
+```
+
+```{r}
+stargazer(LAGFEGLM1, LAGFEGLM2,LAGFEGLM3, LAGFEGLM4,
+          type = "text",  
+          covariate.labels = c("VDEM Polyarchy", "Left-Wing Gov", "Change in GDP per capita", 
+                               "Trade as perc. of GDP", "International Migration Stock",
+                               "Refugees as perc. of pop.", "Emigrants in US and Spain"), 
+          dep.var.labels = "Regulatory Complexity Lagged", 
+          omit = c("Constant", "Country", "Year"), 
+          digits = 2, title = "Tobit Model on Regulatory Complexity", align= TRUE, 
+          column.sep.width = "5pt", 
+          omit.stat = "wald", 
+          se = list (LAGFEGLM1_cse, 
+                     LAGFEGLM2_cse,
+                     LAGFEGLM3_cse, LAGFEGLM4_cse), 
+          notes = "These models use left-censoring at zero with clustered standard errors at the country level", out = "lag model.html")
+```
