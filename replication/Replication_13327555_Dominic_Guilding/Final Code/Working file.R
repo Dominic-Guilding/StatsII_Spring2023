@@ -98,6 +98,7 @@ qqline(res_5)
 #density plot
 plot(density(res_5), xlab = "Residuals", ylab = "Density", main = "Residual Density Plot")
 
+hist(res_5)
 
 #multicollinearity check (VIF)
 vif_score <- vif(TOB5)
